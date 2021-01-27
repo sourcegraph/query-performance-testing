@@ -127,4 +127,3 @@ var graphQLQuery = `fragment FileMatchFields on FileMatch {
 			}
 		  }
 		`
-

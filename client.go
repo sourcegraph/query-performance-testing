@@ -22,14 +22,10 @@ type client struct {
 	client   *http.Client
 }
 
-func newClient() (*client, error) {
+func newClient(endpoint string) (*client, error) {
 	tkn := os.Getenv(envToken)
 	if tkn == "" {
 		return nil, fmt.Errorf("%s not set", envToken)
-	}
-	endpoint := os.Getenv(envEndpoint)
-	if endpoint == "" {
-		return nil, fmt.Errorf("%s not set", envEndpoint)
 	}
 
 	return &client{
