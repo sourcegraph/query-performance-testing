@@ -175,29 +175,33 @@ func runTest(tc *TestCase, dir string) {
 
 	var wg sync.WaitGroup
 
-	// Trace
-	wg.Add(1)
-	go func() {
-		collectTrace(tc.Endpoints.FrontendDebugEndpoint, dir+"/frontend.trace", tc.ProfileTime)
-		wg.Done()
-	}()
-	wg.Add(1)
-	go func() {
-		collectTrace(tc.Endpoints.SearcherDebugEndpoint, dir+"/searcher.trace", tc.ProfileTime)
-		wg.Done()
-	}()
+	if tc.Endpoints.FrontendDebugEndpoint != "" {
+		wg.Add(1)
+		go func() {
+			collectTrace(tc.Endpoints.FrontendDebugEndpoint, dir+"/frontend.trace", tc.ProfileTime)
+			wg.Done()
+		}()
 
-	// Profile
-	wg.Add(1)
-	go func() {
-		collectProfile(tc.Endpoints.FrontendDebugEndpoint, dir+"/frontend.prof", tc.ProfileTime)
-		wg.Done()
-	}()
-	wg.Add(1)
-	go func() {
-		collectProfile(tc.Endpoints.SearcherDebugEndpoint, dir+"/searcher.prof", tc.ProfileTime)
-		wg.Done()
-	}()
+		wg.Add(1)
+		go func() {
+			collectProfile(tc.Endpoints.FrontendDebugEndpoint, dir+"/frontend.prof", tc.ProfileTime)
+			wg.Done()
+		}()
+	}
+
+	if tc.Endpoints.SearcherDebugEndpoint != "" {
+		wg.Add(1)
+		go func() {
+			collectTrace(tc.Endpoints.SearcherDebugEndpoint, dir+"/searcher.trace", tc.ProfileTime)
+			wg.Done()
+		}()
+
+		wg.Add(1)
+		go func() {
+			collectProfile(tc.Endpoints.SearcherDebugEndpoint, dir+"/searcher.prof", tc.ProfileTime)
+			wg.Done()
+		}()
+	}
 
 	// Wait a second after starting profiling
 	time.Sleep(time.Second)
@@ -334,7 +338,7 @@ func main() {
 	matrix := OptMatrix{
 		"endpoints": {
 			"local": EndpointOpt("http://127.0.0.1:3080", "127.0.0.1:6063", "127.0.0.1:6069"),
-			"cloud": EndpointOpt("https://sourcegraph.com", "127.0.0.1:6063", "127.0.0.1:6069"),
+			"cloud": EndpointOpt("https://sourcegraph.com", "", ""),
 		},
 		"codePath": {
 			"new": CodePathOpt(true),
