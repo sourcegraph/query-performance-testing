@@ -70,10 +70,6 @@ Columns are defined below:
 Output:
 <!DOCTYPE html>
 <html>
-<head>
-<meta charset="UTF-8"/><style>
-table {border: medium solid #6495ed;border-collapse: collapse;width: 100%;} th{font-family: monospace;border: thin solid #6495ed;padding: 5px;background-color: #D0E3FA;}td{font-family: sans-serif;border: thin solid #6495ed;padding: 5px;text-align: center;}.odd{background:#e8edff;}img{padding:5px; border:solid; border-color: #dddddd #aaaaaa #aaaaaa #dddddd; border-width: 1px 2px 2px 1px; background-color:white;}</style>
-</head>
 <body>
 <table><tr><th colspan="11">-- Compare old vs new </th></tr><tr><th>frontend_endpoint</th><th>result_set_size</th><th>query_trigger</th><th>count</th><th>repo</th><th>new_took</th><th>old_took</th><th>new_error_count</th><th>old_error_count</th><th>new_unique_count</th><th>old_unique_count</th></tr><tr class="odd"><td>cloud</td><td>lg</td><td>20x05s</td><td>10,000</td><td>chromium</td><td>8,954</td><td>33,644</td><td>340</td><td>120</td><td>4</td><td>1</td></tr>
 <tr><td>cloud</td><td>md</td><td>20x05s</td><td>10,000</td><td>chromium</td><td>8,351</td><td>28,688</td><td>0</td><td>0</td><td>1</td><td>1</td></tr>
