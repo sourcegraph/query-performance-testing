@@ -1,11 +1,11 @@
 package main
 
 type rawResult struct {
-	Data   result        `json:"data,omitempty"`
+	Data   apiResult        `json:"data,omitempty"`
 	Errors []interface{} `json:"errors,omitempty"`
 }
 
-type result struct {
+type apiResult struct {
 	Site struct {
 		BuildVersion string
 	}

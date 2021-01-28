@@ -29,7 +29,7 @@ func newClient(endpoint string, token string) (*client, error) {
 	}, nil
 }
 
-func (s *client) search(ctx context.Context, queryString string) (*result, *metrics, error) {
+func (s *client) search(ctx context.Context, queryString string) (*apiResult, *metrics, error) {
 	var body bytes.Buffer
 	m := &metrics{}
 	if err := json.NewEncoder(&body).Encode(map[string]interface{}{
@@ -66,7 +66,7 @@ func (s *client) search(ctx context.Context, queryString string) (*result, *metr
 	m.trace = resp.Header.Get("x-trace")
 
 	// Decode the response.
-	respDec := rawResult{Data: result{}}
+	respDec := rawResult{Data: apiResult{}}
 	if err := json.NewDecoder(resp.Body).Decode(&respDec); err != nil {
 		return nil, nil, err
 	}
