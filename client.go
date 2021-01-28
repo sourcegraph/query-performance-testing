@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"time"
 )
 
@@ -22,14 +21,9 @@ type client struct {
 	client   *http.Client
 }
 
-func newClient(endpoint string) (*client, error) {
-	tkn := os.Getenv(envToken)
-	if tkn == "" {
-		return nil, fmt.Errorf("%s not set", envToken)
-	}
-
+func newClient(endpoint string, token string) (*client, error) {
 	return &client{
-		token:    tkn,
+		token:    token,
 		endpoint: endpoint,
 		client:   http.DefaultClient,
 	}, nil

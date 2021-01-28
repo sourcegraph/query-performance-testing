@@ -13,21 +13,22 @@ import (
 	"time"
 )
 
+// A map of repo => result set size => pattern
 var matchPatterns = map[string]map[string]string{
 	`github\.com/sourcegraph/sourcegraph-typescript$`: {
-		"small":  "ProgressProvider = (:[1])",
-		"medium": "const :[1] =",
-		"large":  "{ :[1] }",
+		"small":  "ProgressProvider = (:[1])", // 2 results
+		"medium": "const :[1] =",              // 213 results
+		"large":  "(:[1])",                    // 407 results
 	},
-	`github\.com/torvalds/linux$`: {
-		"small":  "balloon_page_enqueue_one(:[1])",
-		"medium": "EXPORT_SYMBOL_GPL(:[1])",
-		"large":  "#include <:[1]>",
+	`torvalds/linux$`: {
+		"small":  "balloon_page_enqueue_one(:[1])",   // 3 results
+		"medium": "#include <crypto/internal/:[1]> ", // 196 results
+		"large":  "notify(:[1])",                     // 470 results
 	},
-	`multi`: {
-		"small":  "balloon_page_enqueue_one(:[1])",
-		"medium": "EXPORT_SYMBOL_GPL(:[1])",
-		"large":  "join(:[1])",
+	`^(github.com/)?chromium/chromium$`: {
+		"small":  "izip(:[1])",             // 14 results
+		"medium": "DCHECK_LT(index, :[1])", // 151 results
+		"large":  "base::size(:[1])",       // 703 results
 	},
 }
 
@@ -37,6 +38,7 @@ type TestCase struct {
 	UseNewCodepath bool
 	Repo           string
 	ResultSetSize  string
+	Count          int
 	QueryTrigger   func() <-chan time.Time
 	ProfileTime    time.Duration
 }
@@ -60,13 +62,14 @@ func (t *TestCase) Query() string {
 	if t.UseNewCodepath {
 		rule = ` rule:'where "zoekt" == "zoekt"'`
 	}
-	return fmt.Sprintf(`timeout:10m count:10000 patternType:structural repo:%s %s %s`, t.Repo, rule, t.MatchPattern())
+	return fmt.Sprintf(`timeout:10m count:%d patternType:structural repo:%s %s %s`, t.Count, t.Repo, rule, t.MatchPattern())
 }
 
 type Endpoints struct {
 	FrontendEndpoint      string
 	FrontendDebugEndpoint string
 	SearcherDebugEndpoint string
+	Token                 string
 }
 
 type OptMatrix map[string]map[string]Opt
@@ -106,12 +109,17 @@ func iterRecursive(o OptMatrix, remaining []string) []*TestCase {
 
 type Opt func(*TestCase)
 
-func EndpointOpt(frontend, frontendDebug, searcherDebug string) Opt {
+func EndpointOpt(frontend, frontendDebug, searcherDebug, tokenEnv string) Opt {
+	token := os.Getenv(tokenEnv)
+	if token == "" {
+		panic(fmt.Sprintf("Env %s does not contain token", tokenEnv))
+	}
 	return func(t *TestCase) {
 		t.Endpoints = Endpoints{
 			FrontendEndpoint:      frontend,
 			FrontendDebugEndpoint: frontendDebug,
 			SearcherDebugEndpoint: searcherDebug,
+			Token:                 token,
 		}
 	}
 }
@@ -125,6 +133,12 @@ func CodePathOpt(useNewCodepath bool) Opt {
 func RepoOpt(repo string) Opt {
 	return func(t *TestCase) {
 		t.Repo = repo
+	}
+}
+
+func CountOpt(count int) Opt {
+	return func(t *TestCase) {
+		t.Count = count
 	}
 }
 
@@ -208,7 +222,7 @@ func runTest(tc *TestCase, dir string) {
 
 	// Queries
 	var resultsWg sync.WaitGroup
-	client, err := newClient(tc.Endpoints.FrontendEndpoint)
+	client, err := newClient(tc.Endpoints.FrontendEndpoint, tc.Endpoints.Token)
 	if err != nil {
 		log.Fatalf("failed to get client: %s", err)
 	}
@@ -337,26 +351,29 @@ func clearCache() {
 func main() {
 	matrix := OptMatrix{
 		"endpoints": {
-			"local": EndpointOpt("http://127.0.0.1:3080", "127.0.0.1:6063", "127.0.0.1:6069"),
-			"cloud": EndpointOpt("https://sourcegraph.com", "", ""),
+			"local": EndpointOpt("http://127.0.0.1:3080", "127.0.0.1:6063", "127.0.0.1:6069", "LOCAL_TOKEN"),
+			"cloud": EndpointOpt("https://sourcegraph.com", "", "", "CLOUD_TOKEN"),
 		},
 		"codePath": {
 			"new": CodePathOpt(true),
 			"old": CodePathOpt(false),
 		},
 		"repo": {
-			"sgtest": RepoOpt(`github\.com/sourcegraph/sourcegraph-typescript$`),
-			"linux":  RepoOpt(`github\.com/torvalds/linux$`),
-			"multi":  RepoOpt(`multi`),
+			"sgtest":   RepoOpt(`github\.com/sourcegraph/sourcegraph-typescript$`),
+			"linux":    RepoOpt(`torvalds/linux$`),
+			"chromium": RepoOpt(`^(github.com/)?chromium/chromium$`),
 		},
 		"resultSetSize": {
 			"sm": ResultSetSizeOpt("small"),
-			// "md": ResultSetSizeOpt("medium"),
+			"md": ResultSetSizeOpt("medium"),
 			"lg": ResultSetSizeOpt("large"),
 		},
+		"count": {
+			"10":    CountOpt(10),
+			"10000": CountOpt(10000),
+		},
 		"queryTrigger": {
-			"2x5s": QueryTriggerOpt(5*time.Second, 2),
-			// "10x1s": QueryTriggerOpt(time.Second, 10),
+			"2x5s":   QueryTriggerOpt(5*time.Second, 2),
 			"20x05s": QueryTriggerOpt(500*time.Millisecond, 20),
 		},
 	}
@@ -366,8 +383,8 @@ func main() {
 	log.Printf("Field order: %v", matrix.GroupNames())
 
 	cases := matrix.Iter()
-	log.Printf("Running %d cases", len(cases))
-	for _, tc := range cases {
+	for i, tc := range cases {
+		log.Printf("Running test %d of %d", i+1, len(cases))
 		clearCache()
 		runTest(tc, dir)
 		time.Sleep(1)
