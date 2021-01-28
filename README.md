@@ -57,6 +57,16 @@ group by
 order by new.name;
 ```
 
+Columns are defined below:
+- `frontend_endpoint`: whether the test was run against a `local` dev instance, or `cloud` sourcegraph.com
+- `result_set_size`: the approximate number of matches the query should return. `sm` ~= 10, `md` ~= 150, `lg` ~= 750
+- `query_trigger`: how many, and how often to send requests. `20x05s` is 20 queries a half second apart, `2x5s` is 2 queries 5 seconds apart
+- `count`: the `count:` parameter of the query
+- `repo`: what repo the query is run against
+- `new_took/old_took`: the average query latency for the new code path and the old code path
+- `new_unique_count/old_unique_count`: the number of unique result counts returned by the queries. If all are collected, this should be 1.
+
+
 Output:
 <!DOCTYPE html>
 <html>
